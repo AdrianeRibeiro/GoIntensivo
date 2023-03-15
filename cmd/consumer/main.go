@@ -7,8 +7,11 @@ import (
 
 	"github.com/AdrianeRibeiro/GoIntensivo/internal/infra/database"
 	"github.com/AdrianeRibeiro/GoIntensivo/internal/usecase"
+	"github.com/AdrianeRibeiro/GoIntensivo/pkg/kafka"
 	ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
-	"google.golang.org/genproto/googleapis/spanner/admin/database/v1"
+
+	// sqlite3 driver
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -26,10 +29,17 @@ func main() {
 	msgChanKafka := make(chan *ckafka.Message)
 
 	topics := []string{"orders"}
-	servers := ""
+	servers := "host.docker.internal:9094"
+
+	fmt.Println("kafka consumer has started")
+
+	go kafka.Consume(topics, servers, msgChanKafka)
+	kafkaWorker(msgChanKafka, usecase)
 }
 
 func kafkaWorker(msgChan chan *ckafka.Message, uc usecase.CalculateFinalPrice) {
+	fmt.Println("kafka worker has started")
+
 	for msg := range msgChan {
 		var OrderInputDTO usecase.OrderInputDTO
 		err := json.Unmarshal(msg.Value, &OrderInputDTO)
